@@ -36,7 +36,7 @@ def compute_coeffs(r,sigma,T,N,i,theta,delta):
     return(omega,a,b,c,d,e)
          
 #%%
-def matrices(r,sigma,T,N,theta,delta):
+def matrices(r,sigma,T,N,theta,delta,X_N):
   def A_prime(r,sigma,T,N,theta,delta):
       A_p = np.zeros((N+1,N+1))
       diag_low = [compute_coeffs(r, sigma, T, N, N-i, theta, delta)[5] for i in range(1,N)]
@@ -82,7 +82,15 @@ def matrices(r,sigma,T,N,theta,delta):
     b=np.transpose([1/T for i in range(T)])
     b=np.dot(np.linalg.inv(om-A_pprime),b)
     return A,b
-  return system(r,sigma,T,N,theta,delta)   
+  def solve_system(A,b,X,t,T):
+    if t==T:
+      return X
+    else:
+      return np.dot(A,solve_system(A,b,X,t+1,T))+b
+  
+  A=system(r,sigma,T,N,theta,delta)[0]
+  b=system(r,sigma,T,N,theta,delta)[1]
+  return solve_system(A,b,X_N,0,T)   
 
 class product():
   def __init__(self,nom):
@@ -96,5 +104,4 @@ class product():
     setattr(self,"delta",fichier["Delta"])#check if we can put only a number i.o an array
     setattr(self,"theta",fichier["Theta"]) #check if we can put only a number i.o an array
     setattr(self,"N",len(fichier["Payoff"]))
-
 fichier = "Data.xlsx"

@@ -1,24 +1,9 @@
 #%% Cell 1
 import numpy as np
-
+import pandas as pd
 #%%
 
-class option:
-    def __init__(self,strike,maturity):
-        self.K = strike
-        self.T = maturity
-class put(option):
-    def payoff(self,ST):
-        return [max(0,self.K-i) for i in ST]
-#%% 
-class call(option):
-    def payoff(self,ST):
-        return [max(0,i-self.K) for i in ST]
 
-#%%
-ST=np.array([100.0001,99])
-a=call(100,5)
-print(a.payoff(ST))
 #%%
 def compute_coeffs(r,sigma,T,N,i,theta,delta):
     alpha = -sigma**2/2
@@ -49,40 +34,67 @@ def compute_coeffs(r,sigma,T,N,i,theta,delta):
         d=theta*dt*alpha/dx**2
         e=(1-theta)*dt*alpha/dx**2
     return(omega,a,b,c,d,e)
-        
+         
 #%%
 def matrices(r,sigma,T,N,theta,delta):
-    def A_prime(r,sigma,T,N,theta,delta):
-        A_p = np.zeros((N+1,N+1))
-        A_p[0][:3]=[compute_coeffs(r, sigma, T, N, N, theta, delta)[5-2*i] for i in range(0,3)]
-        c1=compute_coeffs(r, sigma, T, N, 2, theta, delta)[5] #on met un indice random car coeff identique
-        c2=compute_coeffs(r, sigma, T, N, 2, theta, delta)[1]
-        c3=compute_coeffs(r, sigma, T, N, 2, theta, delta)[4]
-        for i in range(1,N):
-                A_p[i][i-1]=c1
-                A_p[i][i]=c2
-                A_p[i][i+1]=c3
-        A_p[N,N]=compute_coeffs(r, sigma, T, N, 0, theta, delta)[5]
-        A_p[N,N-1]=compute_coeffs(r, sigma, T, N, 0, theta, delta)[3]
-        A_p[N,N-2]=compute_coeffs(r, sigma, T, N, 0, theta, delta)[2]
-        return A_p
-    def A_pp(r,sigma,T,N,theta,delta):
-        A_pp = np.zeros((N+1,N+1))
-        A_pp[0][:2]=[compute_coeffs(r, sigma, T, N, N, theta, delta)[2*i] for i in range(2,0,-1)]
-        for i in range(1,N):
-                A_pp[i][i-1]=compute_coeffs(r, sigma, T, N, N-i, theta, delta)[2]
-                A_pp[i-1][i+1]=compute_coeffs(r, sigma, T, N, N-i, theta, delta)[3]
-        A_pp[N,N]=compute_coeffs(r, sigma, T, N, 0, theta, delta)[5]
-        A_pp[N,N-1]=compute_coeffs(r, sigma, T, N, 0, theta, delta)[3]
-        A_pp[N,N-2]=compute_coeffs(r, sigma, T, N, 0, theta, delta)[2]
-        return A_pp
-    def Omega(r,sigma,T,N,theta,delta):
-        L_om= np.full(N+1,compute_coeffs(r, sigma, T, N, 1, theta, delta)) #on met un indice random car coeff identique
-        Om = np.diag(L_om)
-        Om[0][0] = compute_coeffs(r, sigma, T, N, N, theta, delta)
-        Om[N][N] = compute_coeffs(r, sigma, T, N, 0, theta, delta)
-        return Om
+  def A_prime(r,sigma,T,N,theta,delta):
+      A_p = np.zeros((N+1,N+1))
+      diag_low = [compute_coeffs(r, sigma, T, N, N-i, theta, delta)[5] for i in range(1,N)]
+      diag_low.append(compute_coeffs(r, sigma, T, N, 0, theta, delta)[3])
+      A_low = np.diag(diag_low,-1)
+
+      diag = [compute_coeffs(r, sigma, T, N, N-i, theta, delta)[1] for i in range(N)]
+      diag[0]=compute_coeffs(r, sigma, T, N, N, theta, delta)[5]
+      diag.append(compute_coeffs(r, sigma, T, N, 0, theta, delta)[5])
+      A_diag = np.diag(diag)
+      
+      diag_up = [compute_coeffs(r, sigma, T, N, N-i, theta, delta)[4] for i in range(0,N)]
+      diag_up[0]=compute_coeffs(r, sigma, T, N, N, theta, delta)[3]
+      A_up = np.diag(diag_up,1)
+      A_p=A_low+A_diag+A_up
+
+      return A_p
+  def A_pp(r,sigma,T,N,theta,delta):
+    A_pp = np.zeros((N+1,N+1))
+    diag_low = [compute_coeffs(r, sigma, T, N, N-i, theta, delta)[2] for i in range(1,N+1)]
     
-#%%
-L=np.full(4,0.001)
-print(L)
+    diag=np.zeros(N-1)
+    diag.append(compute_coeffs(r, sigma, T, N, 0, theta, delta)[4])
+    diag[0]=compute_coeffs(r, sigma, T, N, N, theta, delta)[4]
+
+    diag_up = [compute_coeffs(r, sigma, T, N, N-i, theta, delta)[3] for i in range(0,N)]
+    diag_up[0]=compute_coeffs(r, sigma, T, N, N, theta, delta)[2]
+
+    np.fill_diagonal(A_p[1:,:-1],diag_low)
+    np.fill_diagonal(A_p,diag)
+    np.fill_diagonal(A_p[:-1,1:],diag_up)
+  def Omega(r,sigma,T,N,theta,delta):
+    L_om= np.full(N+1,compute_coeffs(r, sigma, T, N, 1, theta, delta)) #on met un indice random car coeff identique
+    Om = np.diag(L_om)
+    Om[0][0] = compute_coeffs(r, sigma, T, N, N, theta, delta)
+    Om[N][N] = compute_coeffs(r, sigma, T, N, 0, theta, delta)
+    return Om
+  def system(r,sigma,T,N,theta,delta):
+    A_p = A_prime(r,sigma,T,N,theta,delta)
+    A_pprime = A_pp(r,sigma,T,N,theta,delta)
+    om=Omega(r,sigma,T,N,theta,delta)
+    A=np.dot(np.linalg.inv(om-A_pprime),A_p)
+    b=np.transpose([1/T for i in range(T)])
+    b=np.dot(np.linalg.inv(om-A_pprime),b)
+    return A,b
+  return system(r,sigma,T,N,theta,delta)   
+
+class product():
+  def __init__(self,nom):
+    self.name_file=nom
+    self.import_payoff()
+  def import_payoff(self):
+    fichier=pd.read_csv(self.name_file)
+    setattr(self,"r",len(fichier["Interest rate"]))    
+    setattr(self,"payoff",fichier["Payoff"])
+    setattr(self,"sigma",fichier["Sigma"])
+    setattr(self,"delta",fichier["Delta"])#check if we can put only a number i.o an array
+    setattr(self,"theta",fichier["Theta"]) #check if we can put only a number i.o an array
+    setattr(self,"N",len(fichier["Payoff"]))
+
+fichier = "Data.xlsx"

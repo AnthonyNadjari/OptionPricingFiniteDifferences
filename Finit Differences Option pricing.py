@@ -65,9 +65,9 @@ def matrices(r,sigma,T,N,theta,delta):
     diag_up = [compute_coeffs(r, sigma, T, N, N-i, theta, delta)[3] for i in range(0,N)]
     diag_up[0]=compute_coeffs(r, sigma, T, N, N, theta, delta)[2]
 
-    np.fill_diagonal(A_p[1:,:-1],diag_low)
-    np.fill_diagonal(A_p,diag)
-    np.fill_diagonal(A_p[:-1,1:],diag_up)
+    np.fill_diagonal(A_pp[1:,:-1],diag_low)
+    np.fill_diagonal(A_pp,diag)
+    np.fill_diagonal(A_pp[:-1,1:],diag_up)
   def Omega(r,sigma,T,N,theta,delta):
     L_om= np.full(N+1,compute_coeffs(r, sigma, T, N, 1, theta, delta)) #on met un indice random car coeff identique
     Om = np.diag(L_om)

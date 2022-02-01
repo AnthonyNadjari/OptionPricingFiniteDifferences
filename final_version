@@ -3,16 +3,14 @@ import numpy as np
 import pandas as pd
 import math
 #os.chdir(r"C:\Users\nadja\OneDrive\Bureau\code")
-#%%
 
 
+         
 #%%
-def compute_coeffs(r,sigma,T,N,i,theta,delta):
-    alpha = -0.5*sigma**2
-    beta =0.5*(sigma**2)-r
-    gamma = r
-    dx=10*sigma*math.sqrt(T)/(N)
-    dt=T/365 ####new #####
+def matrices(r,sigma,T,nb_steps_time,N,theta,delta,X_N):
+  def coeffs(r,sigma,T,nb_steps_time,N,i,theta,delta):
+    alpha,beta,gamma = -0.5*sigma**2,0.5*(sigma**2)-r,r
+    dx,dt=10*sigma*math.sqrt(T)/N,T/nb_steps_time
     if i!=0 and i!=N:
         omega = theta*dt*(2*alpha/dx**2 -gamma)-1
         a = (1-theta)*dt*(-2*alpha/dx**2+gamma)-1
@@ -35,115 +33,122 @@ def compute_coeffs(r,sigma,T,N,i,theta,delta):
         d=theta*dt*alpha/dx**2
         e=(1-theta)*dt*alpha/dx**2
     return(omega,a,b,c,d,e)
-         
-#%%
+  def A_prime(r,sigma,T,nb_steps_time,N,theta,delta):
+      A_p = np.zeros((N+1,N+1))
 
-def A_prime(r,sigma,T,N,theta,delta):
-    A_p = np.zeros((N+1,N+1))
-
-    diag_low_first = [compute_coeffs(r, sigma, T, N, 1, theta, delta)[5] for i in range(1,N)]
-    diag_low=np.append(diag_low_first,[compute_coeffs(r, sigma, T, N, 0, theta, delta)[3]])
+      diag_low_first = [coeffs(r, sigma, T,nb_steps_time, N, 1, theta, delta)[5] for i in range(1,N)]
+      diag_low=np.append(diag_low_first,[coeffs(r, sigma, T,nb_steps_time, N, 0, theta, delta)[3]])
 
 
 
-    diag_first = [compute_coeffs(r, sigma, T, N, 1, theta, delta)[1] for i in range(N)]
-    diag_first[0]=compute_coeffs(r, sigma, T, N, N, theta, delta)[5]
-    diag=np.append(diag_first,[compute_coeffs(r, sigma, T, N, 0, theta, delta)[5]])
+      diag_first = [coeffs(r, sigma, T, nb_steps_time,N, 1, theta, delta)[1] for i in range(N)]
+      diag_first[0]=coeffs(r, sigma, T,nb_steps_time, N, N, theta, delta)[5]
+      diag=np.append(diag_first,[coeffs(r, sigma, T,nb_steps_time, N, 0, theta, delta)[5]])
 
-    diag_up = [compute_coeffs(r, sigma, T, N, 5, theta, delta)[4] for i in range(N)]
-    diag_up[0]=compute_coeffs(r, sigma, T, N, N, theta, delta)[3]
-    
-    np.fill_diagonal(A_p[1:,:-1],diag_low)
-    np.fill_diagonal(A_p,diag)
-    np.fill_diagonal(A_p[:-1,1:],diag_up)
+      diag_up = [coeffs(r, sigma, T,nb_steps_time, N, 5, theta, delta)[4] for i in range(N)]
+      diag_up[0]=coeffs(r, sigma, T, nb_steps_time,N, N, theta, delta)[3]
+      
+      np.fill_diagonal(A_p[1:,:-1],diag_low)
+      np.fill_diagonal(A_p,diag)
+      np.fill_diagonal(A_p[:-1,1:],diag_up)
 
-    A_p[0,2]=compute_coeffs(r, sigma, T, N, N, theta, delta)[1]
-    A_p[N,-3]=compute_coeffs(r, sigma, T, N, 0, theta, delta)[1]
-    #print("aaadlfjreji",compute_coeffs(r, sigma, T, N, 0, theta, delta)[1])
-    return A_p
-def A_pp(r,sigma,T,N,theta,delta):
-  A_2p = np.zeros((N+1,N+1))
-  diag_low = [compute_coeffs(r, sigma, T, N, 1, theta, delta)[2] for i in range(N)] #osef coef
-  diag_low[-1]=compute_coeffs(r, sigma, T, N, 0, theta, delta)[2]
+      A_p[0,2]=coeffs(r, sigma, T,nb_steps_time, N, N, theta, delta)[1]
+      A_p[N,-3]=coeffs(r, sigma, T,nb_steps_time, N, 0, theta, delta)[1]
 
-  diag_first=[0 for i in range(N)]
-  diag=np.append(diag_first,[compute_coeffs(r, sigma, T, N, 0, theta, delta)[4]])
-  diag[0]=compute_coeffs(r, sigma, T, N, N, theta, delta)[4]
+      return A_p
+  def A_pp(r,sigma,T,nb_steps_time,N,theta,delta):
+    A_2p = np.zeros((N+1,N+1))
+    diag_low = [coeffs(r, sigma, T, nb_steps_time,N, 1, theta, delta)[2] for i in range(N)] #osef coef
+    diag_low[-1]=coeffs(r, sigma, T,nb_steps_time, N, 0, theta, delta)[2]
 
-  diag_up = [compute_coeffs(r, sigma, T, N, 1, theta, delta)[3] for i in range(N)] #osef coef
-  diag_up[0]=compute_coeffs(r, sigma, T, N, N, theta, delta)[2]
-  #print(diag_low)
-  np.fill_diagonal(A_2p[1:,:-1],diag_low)
-  np.fill_diagonal(A_2p,diag)
-  np.fill_diagonal(A_2p[:-1,1:],diag_up)
+    diag_first=[0 for i in range(N)]
+    diag=np.append(diag_first,[coeffs(r, sigma, T,nb_steps_time, N, 0, theta, delta)[4]])
+    diag[0]=coeffs(r, sigma, T, nb_steps_time,N, N, theta, delta)[4]
 
 
-  return A_2p
-def Omega(r,sigma,T,N,theta,delta):
-  L_om= np.full(N+1,compute_coeffs(r, sigma, T, N, 1, theta, delta)[0]) #osef coeff
-  Om = np.diag(L_om)
-  Om[0,0] = compute_coeffs(r, sigma, T, N, N, theta, delta)[0]
-  Om[N,N] = compute_coeffs(r, sigma, T, N, 0, theta, delta)[0]
-  return Om
+    diag_up = [coeffs(r, sigma, T,nb_steps_time, N, 1, theta, delta)[3] for i in range(N)] #osef coef
+    diag_up[0]=coeffs(r, sigma, T,nb_steps_time, N, N, theta, delta)[2]
+
+    np.fill_diagonal(A_2p[1:,:-1],diag_low)
+    np.fill_diagonal(A_2p,diag)
+    np.fill_diagonal(A_2p[:-1,1:],diag_up)
   
-def system(r,sigma,T,N,theta,delta):
-  A_p = A_prime(r,sigma,T,N,theta,delta)
 
-  A_pprime = A_pp(r,sigma,T,N,theta,delta)
-
-
-  om=Omega(r,sigma,T,N,theta,delta)
-  #print("aaaa",pd.DataFrame(om))
-  A=np.dot(np.linalg.inv(om-A_pprime),A_p)
-  b=np.transpose([delta*T/365 for i in range(N+1)])
-  #print(pd.DataFrame(A))
-  #print("dfdfrfr",np.linalg.inv(om-A_pprime))
-  b=np.dot(np.linalg.inv(om-A_pprime),b)
-  
-  return A,b
-def solve_system(A,b,X):
-  for i in range(365):
-      X=np.dot(A,X)+b
-  return X
-
-
-
-
+    return A_2p
+  def Omega(r,sigma,T,nb_steps_time,N,theta,delta):
+    L_om= np.full(N+1,coeffs(r, sigma, T, nb_steps_time,N, 1, theta, delta)[0]) #osef coeff
+    Om = np.diag(L_om)
+    Om[0,0] = coeffs(r, sigma, T,nb_steps_time, N, N, theta, delta)[0]
+    Om[N,N] = coeffs(r, sigma, T,nb_steps_time, N, 0, theta, delta)[0]
+    return Om
     
-N=300
+  def system(r,sigma,T,nb_steps_time,N,theta,delta):
+    A_p = A_prime(r,sigma,T,nb_steps_time,N,theta,delta)
+    
+    A_pprime = A_pp(r,sigma,T,nb_steps_time,N,theta,delta)
+  
+ 
+    om=Omega(r,sigma,T,nb_steps_time,N,theta,delta)
+    A=np.dot(np.linalg.inv(om-A_pprime),A_p)
+    b=np.transpose([delta*T/nb_steps_time for i in range(N+1)])
+    b=np.dot(np.linalg.inv(om-A_pprime),b)
+    
+    return A,b
+  def solve_system(A,b,X,nb_steps_time):
+    for i in range(nb_steps_time):
+        X=np.dot(A,X)+b
+    return X
+  
+  A,b=system(r,sigma,T,nb_steps_time,N,theta,delta)
+  return solve_system(A,b,X_N,nb_steps_time)[int((np.shape(solve_system(A,b,X_N,nb_steps_time))[0]-1)/2)]   
+    
+
+
+
+class option():
+ def __init__(self,N,sigma,r,T,nb_steps_time,delta,theta,S0,K,payoff_obj):
+   self.strike = K
+   self.maturity = T
+   self.N=N
+   self.vol = sigma
+   self.interest_rate = r
+   self.steps_time = nb_steps_time
+   self.delta = delta
+   self.theta=theta
+   self.S0 = S0
+   self.payoff = payoff_obj.payoff
+   solve_price(self)
+def solve_price(self):
+  price = matrices(self.interest_rate,self.vol,self.maturity,self.steps_time,self.N,self.theta,self.delta,self.payoff)
+  setattr(self,"price",price)
+
+#user shall create a class with an attribute "payoff" , which is a vector of payoff values.
+#item should then be passed as an argument.
+
+class option_test():
+  def __init__(self,S0,sigma,T,N):
+    dx = 10*sigma*math.sqrt(T)/N
+    Smin=np.log(100)-5*sigma*np.sqrt(T)
+    self.payoff = np.array([max(math.exp(Smin+i*dx)-K,0) for i in range(N+1)])
+
+
+
+N=200
 sigma=0.1
+S0=100
 r=0.02
-T=0.50
+T=2
+nb_steps_time = 365
 delta=0
 theta = 0.5
-Smax=np.log(100)-5*sigma*np.sqrt(T)
-
+Smin=np.log(100)-5*sigma*np.sqrt(T)
 dx=10*sigma*math.sqrt(T)/N
 
 K=95
 
-X1=np.array([Smax+i*dx for i in range(N+1)])
+X=np.array([max(math.exp(Smin+i*dx)-K,0) for i in range(N+1)])
 
-X2=np.array([math.exp(i) for i in X1])
+test_payoff = option_test(S0,sigma,T,N)
+test_option=option(N,sigma,r,T,nb_steps_time,delta,theta,S0,K,test_payoff)
+print(test_option.price)
 
-X=np.array([max(i-K,0) for i in X2])
-
-A,b=system(r,sigma,T,N,theta,delta)
-print(b)
-#print("hazzi",pd.DataFrame(Omega(r, sigma, T, N, theta, delta)))
-#print(A)
-pd.set_option("display.max_rows", None, "display.max_columns", None)
-
-#print(pd.DataFrame(Omega(r,sigma,T,N,theta,delta)))
-
-print(solve_system(A,b,X)[145:155])
-
-
-
-
-
-
-#print(X,np.log(Smax))
-#aa=matrices(r,sigma,T,N,theta,delta,X)
-#print(pd.DataFrame(aa))
-#print(aa[97:102])

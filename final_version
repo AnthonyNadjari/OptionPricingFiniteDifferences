@@ -100,7 +100,7 @@ def matrices(r,sigma,T,nb_steps_time,N,theta,delta,X_N):
     return X
   
   A,b=system(r,sigma,T,nb_steps_time,N,theta,delta)
-  return solve_system(A,b,X_N,nb_steps_time)[int((np.shape(solve_system(A,b,X_N,nb_steps_time))[0]-1)/2)]   
+  return solve_system(A,b,X_N,nb_steps_time)[int((np.shape(solve_system(A,b,X_N,nb_steps_time))[0]-1)/2)]   #remains to do weighting by interpolation for even sizes (odd steps numbers)
     
 
 

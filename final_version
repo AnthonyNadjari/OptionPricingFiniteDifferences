@@ -7,6 +7,7 @@ import math
 
          
 #%%
+#################### Compute the associated coefficients, matrices and solve the required system ########################
 def matrices(r,sigma,T,nb_steps_time,N,theta,delta,X_N):
   def coeffs(r,sigma,T,nb_steps_time,N,i,theta,delta):
     alpha,beta,gamma = -0.5*sigma**2,0.5*(sigma**2)-r,r
@@ -33,6 +34,7 @@ def matrices(r,sigma,T,nb_steps_time,N,theta,delta,X_N):
         d=theta*dt*alpha/dx**2
         e=(1-theta)*dt*alpha/dx**2
     return(omega,a,b,c,d,e)
+    
   def A_prime(r,sigma,T,nb_steps_time,N,theta,delta):
       A_p = np.zeros((N+1,N+1))
 
@@ -73,7 +75,6 @@ def matrices(r,sigma,T,nb_steps_time,N,theta,delta,X_N):
     np.fill_diagonal(A_2p,diag)
     np.fill_diagonal(A_2p[:-1,1:],diag_up)
   
-
     return A_2p
   def Omega(r,sigma,T,nb_steps_time,N,theta,delta):
     L_om= np.full(N+1,coeffs(r, sigma, T, nb_steps_time,N, 1, theta, delta)[0]) #osef coeff
@@ -84,7 +85,6 @@ def matrices(r,sigma,T,nb_steps_time,N,theta,delta,X_N):
     
   def system(r,sigma,T,nb_steps_time,N,theta,delta):
     A_p = A_prime(r,sigma,T,nb_steps_time,N,theta,delta)
-    
     A_pprime = A_pp(r,sigma,T,nb_steps_time,N,theta,delta)
   
  
@@ -104,6 +104,7 @@ def matrices(r,sigma,T,nb_steps_time,N,theta,delta,X_N):
     
 
 
+#################### define the option class with option parameters ########################
 
 class option():
  def __init__(self,N,sigma,r,T,nb_steps_time,delta,theta,S0,K,payoff_obj):
@@ -122,8 +123,10 @@ def solve_price(self):
   price = matrices(self.interest_rate,self.vol,self.maturity,self.steps_time,self.N,self.theta,self.delta,self.payoff)
   setattr(self,"price",price)
 
-#user shall create a class with an attribute "payoff" , which is a vector of payoff values.
-#item should then be passed as an argument.
+
+#################### define a payoff class : the one below is a test one (can be used as a modele by the user) ########################
+##################### user shall create a class with an attribute "payoff" , which is a vector of payoff values.####################
+#########################################item should then be passed as an argument.########################################
 
 class option_test():
   def __init__(self,S0,sigma,T,N):
@@ -131,22 +134,23 @@ class option_test():
     Smin=np.log(100)-5*sigma*np.sqrt(T)
     self.payoff = np.array([max(math.exp(Smin+i*dx)-K,0) for i in range(N+1)])
 
-
+######################################## initialize parameters to test the product ####################
 
 N=200
 sigma=0.1
 S0=100
 r=0.02
 T=2
+K=95
 nb_steps_time = 365
 delta=0
 theta = 0.5
+
 Smin=np.log(100)-5*sigma*np.sqrt(T)
 dx=10*sigma*math.sqrt(T)/N
 
 K=95
-
-X=np.array([max(math.exp(Smin+i*dx)-K,0) for i in range(N+1)])
+#X=np.array([max(math.exp(Smin+i*dx)-K,0) for i in range(N+1)])
 
 test_payoff = option_test(S0,sigma,T,N)
 test_option=option(N,sigma,r,T,nb_steps_time,delta,theta,S0,K,test_payoff)

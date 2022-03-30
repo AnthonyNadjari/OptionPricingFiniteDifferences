@@ -1,5 +1,4 @@
 
-Finite Difference Option Pricer
 # PDE Option Pricing - Black Scholes Model using Finite Differences method
 
 The python file allows the user to compute the price of any payoff using the Finite Difference method. <br>
